@@ -1,2 +1,2 @@
 # JosephLee
-Repository of Joseph's data projects
+Repository of Joseph's data analytics projects
