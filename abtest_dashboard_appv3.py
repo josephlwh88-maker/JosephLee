@@ -87,6 +87,14 @@ if uploaded_file is not None:
         df.columns,
         index=min(4, len(df.columns)-1)
     )
+    # Multi-Metric Selection for Summary Matrix
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    default_selected = list(set([c for c in [col_rev, col_sec] if c in numeric_cols]))
+    matrix_metrics = st.sidebar.multiselect(
+        "Select Metrics for Summary Matrix",
+        options=numeric_cols,
+        default=default_selected
+    )
     
     cohort_mode = "Cumulative"
     if scenario == "New Cohorts (Onboarding Users, Lifecycle LTV Curves)":
@@ -273,6 +281,18 @@ if uploaded_file is not None:
                 player_pre = aggregate_player_calendar(df_pre)
                 player_event = aggregate_player_calendar(df_event)
                 
+                # --- MULTI-METRIC SUMMARY MATRIX SECTION ---
+                st.header("📊 Multi-Metric Summary Matrix")
+                if matrix_metrics:
+                    summary_matrix_df = generate_summary_matrix(
+                        df_event, col_variant, col_player, ctrl_grp, var_grps, matrix_metrics
+                    )
+                    if not summary_matrix_df.empty:
+                        st.dataframe(summary_matrix_df, use_container_width=True)
+                    else:
+                        st.info("No data available to construct the summary matrix.")
+                else:
+                    st.info("Please select metrics in the sidebar under 'Select Metrics for Summary Matrix'.")
                 st.header("📊 Multi-Variant Parallel Evaluation Results")
                 tab1, tab2 = st.tabs(["🚀 Live-Event Impact Analysis", "🧪 Pre-Event Verification (A/A Check)"])
                 
@@ -434,6 +454,26 @@ if uploaded_file is not None:
                 
                 y_label_p, y_label_s = "Per-User Daily Metric", "Per-User Daily Metric"
                 
+                # --- MULTI-METRIC SUMMARY MATRIX SECTION ---
+            st.header("📊 Multi-Metric Summary Matrix")
+            if matrix_metrics:
+                summary_matrix_df = generate_summary_matrix(
+                    cohort_df[cohort_df['player_age'] <= target_age], 
+                    col_variant, col_player, ctrl_grp, var_grps, matrix_metrics
+                )
+                if not summary_matrix_df.empty:
+                    st.dataframe(summary_matrix_df, use_container_width=True)
+                else:
+                    st.info("No data available to construct the summary matrix.")
+            else:
+                st.info("Please select metrics in the sidebar under 'Select Metrics for Summary Matrix'.")
+
+            st.header("📊 Lifecycle Milestone Evaluation Results")
+            if ctrl_grp not in all_players[col_variant].values:
+                st.error("Baseline tracking lacks valid entries inside this timeline slice.")
+            else:
+                snapshot_df['is_conv_p'] = np.where(snapshot_df['primary_capped'] > 0, 1, 0)
+                snapshot_df['is_conv_s'] = np.where(snapshot_df['sec_capped'] > 0, 1, 0)
             st.header("📊 Lifecycle Milestone Evaluation Results")
             if ctrl_grp not in all_players[col_variant].values:
                 st.error("Baseline tracking lacks valid entries inside this timeline slice.")
